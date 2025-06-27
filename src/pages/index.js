@@ -224,23 +224,25 @@ export default function Home() {
               <p className="text-green-600 font-semibold">
                 Pay: ${entry.total}
               </p>
-              <button
-                onClick={() => {
-                  setWorkType(entry.workType);
-                  setMinutes(entry.minutes.toString());
-                  setDate(entry.date);
-                  setEditingId(entry.id);
-                }}
-                className="btn btn-sm btn-info mt-2 mr-2"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => deleteEntry(entry.id)}
-                className="btn btn-sm btn-error mt-2"
-              >
-                Delete
-              </button>
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    setWorkType(entry.workType);
+                    setMinutes(entry.minutes.toString());
+                    setDate(entry.date);
+                    setEditingId(entry.id);
+                  }}
+                  className="btn btn-sm btn-info mr-4"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteEntry(entry.id)}
+                  className="btn btn-sm btn-error"
+                >
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>
