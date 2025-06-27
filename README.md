@@ -82,10 +82,10 @@ Open http://localhost:3000 in your browser.
 
 ## 🙌 Contributing
 - If you'd like to contribute:
-* Fork the repo
-* Create a new branch
-* Make your changes
-* Submit a PR!
+    * Fork the repo
+    * Create a new branch
+    * Make your changes
+    * Submit a PR!
 
 <!-- ## 🧾 License
 
