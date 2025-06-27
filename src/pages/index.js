@@ -3,10 +3,8 @@ import { useState, useEffect } from "react";
 import {
   AcademicCapIcon,
   UserGroupIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
-
-
 
 export default function Home() {
   const [workType, setWorkType] = useState("");
@@ -25,31 +23,53 @@ export default function Home() {
     localStorage.setItem("entries", JSON.stringify(entries));
   }, [entries]);
 
+  const [editingId, setEditingId] = useState(null);
   const addEntry = () => {
     const time = parseFloat(minutes);
-    
+
     if (!workType || isNaN(time)) return;
 
-    const newEntry = {
-      id: Date.now(),
-      date: date || new Date().toLocaleDateString(), // fallback to today if empty
-      workType,
-      minutes: time,
-      payRate: fixedPayRate, // store fixed pay rate here
-      total: ((time / 60) * fixedPayRate).toFixed(2),
-    };
-    
-    newEntry.totalEarnedSoFar = (getTotalPay() * 1 + parseFloat(newEntry.total)).toFixed(2);
+    const total = ((time / 60) * fixedPayRate).toFixed(2);
 
+    if (editingId !== null) {
+      // Editing existing entry
+      const updatedEntries = entries.map((entry) =>
+        entry.id === editingId
+          ? {
+              ...entry,
+              date: date || new Date().toLocaleDateString(),
+              workType,
+              minutes: time,
+              total,
+            }
+          : entry
+      );
+      setEntries(updatedEntries);
+      setEditingId(null);
+    } else {
+      // Creating new entry
 
-    setEntries([newEntry, ...entries]);
+      const newEntry = {
+        id: Date.now(),
+        date: date || new Date().toLocaleDateString(), // fallback to today if empty
+        workType,
+        minutes: time,
+        payRate: fixedPayRate, // store fixed pay rate here
+        total,
+        totalEarnedSoFar: (getTotalPay() * 1 + parseFloat(total)).toFixed(2),
+      };
+      setEntries([newEntry, ...entries]);
+      sendToGoogleSheet(newEntry);
+    }
+    // Reset fields
     setWorkType("");
     setMinutes("");
-    setDate(""); // clear date after adding entry
-    sendToGoogleSheet(newEntry);
-    
-    
+    setDate("");
   };
+  // newEntry.totalEarnedSoFar = (
+  //   getTotalPay() * 1 +
+  //   parseFloat(newEntry.total)
+  // ).toFixed(2);
 
   const getTotalMinutes = () => {
     return entries.reduce((sum, e) => sum + e.minutes, 0);
@@ -71,17 +91,14 @@ export default function Home() {
   };
 
   const sendToGoogleSheet = (entry) => {
-    fetch(
-      process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL,
-      {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(entry),
-      }
-    )
+    fetch(process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(entry),
+    })
       // .then((res) => res.json())
       .then(() => {
         // if (res.status === "success") {
@@ -93,41 +110,43 @@ export default function Home() {
       .catch((err) => console.error("Google Sheet error:", err));
   };
 
+  const deleteEntry = (id) => {
+    const updatedEntries = entries.filter((entry) => entry.id !== id);
+    setEntries(updatedEntries);
+  };
+
   return (
     <main className="max-w-2xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Forms</h1>
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-  <a
-    href="https://docs.google.com/forms/d/e/1FAIpQLSeC9-8pwUJF5CxdIkids4SgFScKZ7kBJxq4nd2r38xIgWKn5A/viewform"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
-
-  >
-    <AcademicCapIcon className="w-5 h-5" />
-    Class Time
-  </a>
-  <a
-    href="https://docs.google.com/forms/d/e/1FAIpQLSfHs_GurwRhCYWC5edHx1DqZZx1U0FsroCwqYw9iz9tfsBTNg/viewform"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
-
-  >
-    <UserGroupIcon className="w-5 h-5" />
-    Mentoring Time
-  </a>
-  <a
-    href="https://docs.google.com/forms/d/e/1FAIpQLScyxgpsD6mGrkck2801iMOt2rSIH4-yKbuizU63fLiTFcM3Pg/viewform"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
-
-  >
-    <ClipboardDocumentCheckIcon className="w-5 h-5" />
-    Grading Time
-  </a>
-</div>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSeC9-8pwUJF5CxdIkids4SgFScKZ7kBJxq4nd2r38xIgWKn5A/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
+        >
+          <AcademicCapIcon className="w-5 h-5" />
+          Class Time
+        </a>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSfHs_GurwRhCYWC5edHx1DqZZx1U0FsroCwqYw9iz9tfsBTNg/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
+        >
+          <UserGroupIcon className="w-5 h-5" />
+          Mentoring Time
+        </a>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLScyxgpsD6mGrkck2801iMOt2rSIH4-yKbuizU63fLiTFcM3Pg/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
+        >
+          <ClipboardDocumentCheckIcon className="w-5 h-5" />
+          Grading Time
+        </a>
+      </div>
       <h1 className="text-3xl font-bold mb-4">Time Tracker</h1>
       <input
         type="date"
@@ -137,13 +156,19 @@ export default function Home() {
       />
 
       <div className="grid gap-3 mb-6">
-        <input
-          type="text"
-          placeholder="Work Type (e.g., Class, Mentoring)"
-          className="input input-bordered w-full"
+        <select
+          className="select select-bordered w-full"
           value={workType}
           onChange={(e) => setWorkType(e.target.value)}
-        />
+        >
+          <option value="" disabled>
+            Select Work Type
+          </option>
+          <option value="Class Time">Class Time</option>
+          <option value="Mentoring Time">Mentoring Time</option>
+          <option value="Grading Time">Grading Time</option>
+        </select>
+
         <input
           type="number"
           placeholder="Minutes Worked"
@@ -158,7 +183,7 @@ export default function Home() {
           readOnly
         />
         <button className="btn btn-primary" onClick={addEntry}>
-          Add Entry
+          {editingId !== null ? "Update Entry" : "Add Entry"}
         </button>
       </div>
       {/* Summary */}
@@ -187,20 +212,39 @@ export default function Home() {
       {/* Time Cards */}
       <div className="bg-base-200 p-4 rounded-lg shadow mb-6">
         <ul className="space-y-4">
-            <h2 className="text-xl font-bold mb-2">Time Cards</h2>
-            {entries.map((entry) => (
-              <li key={entry.id} className="card bg-base-100 shadow p-4">
-                <p className="font-bold">{entry.date}</p>
-                <p>Work: {entry.workType}</p>
-                <p>Time: {entry.minutes} mins</p>
-                <p className="text-lg font-semibold">
-                  Pay Rate: ${entry.payRate}/hr
-                </p>
-                <p className="text-green-600 font-semibold">Pay: ${entry.total}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </main>
+          <h2 className="text-xl font-bold mb-2">Time Cards</h2>
+          {entries.map((entry) => (
+            <li key={entry.id} className="card bg-base-100 shadow p-4">
+              <p className="font-bold">{entry.date}</p>
+              <p>Work: {entry.workType}</p>
+              <p>Time: {entry.minutes} mins</p>
+              <p className="text-lg font-semibold">
+                Pay Rate: ${entry.payRate}/hr
+              </p>
+              <p className="text-green-600 font-semibold">
+                Pay: ${entry.total}
+              </p>
+              <button
+                onClick={() => {
+                  setWorkType(entry.workType);
+                  setMinutes(entry.minutes.toString());
+                  setDate(entry.date);
+                  setEditingId(entry.id);
+                }}
+                className="btn btn-sm btn-info mt-2 mr-2"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => deleteEntry(entry.id)}
+                className="btn btn-sm btn-error mt-2"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </main>
   );
 }
