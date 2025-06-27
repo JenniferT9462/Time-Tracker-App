@@ -1,8 +1,8 @@
 # ⏱️ Time Tracker App
 
 This is a simple React/Next.js app to track time spent on various work types (e.g., class, mentoring), calculate earnings based on a fixed pay rate, and send data to a Google Sheet for logging.
-- Tracking App Deployed on Vercel: https://time-tracker-app-seven.vercel.app/
-
+- Tracking App Deployed on Vercel: 
+https://time-tracker-app-ec9y.vercel.app/
 ## ✨ Features
 - Input for date, work type, and minutes worked
 - Fixed pay rate (editable in code)
