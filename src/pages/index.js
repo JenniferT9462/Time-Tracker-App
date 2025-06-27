@@ -120,7 +120,7 @@ export default function Home() {
       <h1 className="text-3xl font-bold mb-4">Forms</h1>
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <a
-          href="https://docs.google.com/forms/d/e/1FAIpQLSeC9-8pwUJF5CxdIkids4SgFScKZ7kBJxq4nd2r38xIgWKn5A/viewform"
+          href={process.env.NEXT_PUBLIC_GOOGLE_FORM_CLASS}
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
@@ -129,7 +129,7 @@ export default function Home() {
           Class Time
         </a>
         <a
-          href="https://docs.google.com/forms/d/e/1FAIpQLSfHs_GurwRhCYWC5edHx1DqZZx1U0FsroCwqYw9iz9tfsBTNg/viewform"
+          href={process.env.NEXT_PUBLIC_GOOGLE_FORM_MENTOR}
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
@@ -138,7 +138,7 @@ export default function Home() {
           Mentoring Time
         </a>
         <a
-          href="https://docs.google.com/forms/d/e/1FAIpQLScyxgpsD6mGrkck2801iMOt2rSIH4-yKbuizU63fLiTFcM3Pg/viewform"
+          href={process.env.NEXT_PUBLIC_GOOGLE_FORM_CLASS}
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition"
