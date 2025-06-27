@@ -65,7 +65,7 @@ export default function Home() {
 
   const sendToGoogleSheet = (entry) => {
     fetch(
-      "https://script.google.com/macros/s/AKfycbxRIAchMjPWk3-PZ9TUFbseSJeGJjo8LSFZMnewONwikMoxzFAzzViNgQGvxOmVCHO7ew/exec",
+      process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL,
       {
         method: "POST",
         mode: "no-cors",
