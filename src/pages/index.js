@@ -11,6 +11,8 @@ export default function Home() {
   const [minutes, setMinutes] = useState("");
   const [entries, setEntries] = useState([]);
   const [date, setDate] = useState("");
+  
+ 
 
   const fixedPayRate = 18; // fixed pay rate here
 
@@ -66,11 +68,7 @@ export default function Home() {
     setMinutes("");
     setDate("");
   };
-  // newEntry.totalEarnedSoFar = (
-  //   getTotalPay() * 1 +
-  //   parseFloat(newEntry.total)
-  // ).toFixed(2);
-
+  
   const getTotalMinutes = () => {
     return entries.reduce((sum, e) => sum + e.minutes, 0);
   };
@@ -182,6 +180,7 @@ export default function Home() {
           value={fixedPayRate}
           readOnly
         />
+        
         <button className="btn btn-primary" onClick={addEntry}>
           {editingId !== null ? "Update Entry" : "Add Entry"}
         </button>
