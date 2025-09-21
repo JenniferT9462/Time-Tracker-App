@@ -14,93 +14,134 @@ export default function Home() {
   const [archive, setArchive] = useState([]);
   const [flatRate, setFlatRate] = useState("");
   const [serviceName, setServiceName] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const fixedPayRate = 18; // fixed pay rate here
 
+  // --- Helper: build a summary object from an entries array
+  const createSummaryFromEntries = (entriesArr) => {
+    const totalEntries = entriesArr.length;
+    const totalMinutes = entriesArr.reduce(
+      (sum, e) => sum + (typeof e.minutes === "number" ? e.minutes : 0),
+      0
+    );
+    const totalPay = entriesArr.reduce(
+      (sum, e) => sum + (parseFloat(e.total) || 0),
+      0
+    );
+    const byType = entriesArr.reduce((acc, e) => {
+      const type = e.workType || "Other";
+      if (!acc[type]) acc[type] = { minutes: 0, total: 0 };
+      if (typeof e.minutes === "number") acc[type].minutes += e.minutes;
+      acc[type].total += parseFloat(e.total) || 0;
+      return acc;
+    }, {});
+    return {
+      totalEntries,
+      totalMinutes,
+      totalPay: totalPay.toFixed(2),
+      byType,
+    };
+  };
+
+  // --- Mount: load saved data and archive old month if necessary
   useEffect(() => {
-    // This effect runs only once on initial component mount to load data
     const now = new Date();
     const thisMonth = now.getMonth();
+    setCurrentMonth(thisMonth);
+
     const storedEntries = JSON.parse(localStorage.getItem("entries") || "[]");
-    const storedMonth = parseInt(localStorage.getItem("month"));
     const storedArchive = JSON.parse(localStorage.getItem("archive") || "[]");
 
-    if (isNaN(storedMonth) || storedMonth !== thisMonth) {
-      // Archive old entries if the month has changed
-      if (storedEntries.length > 0) {
-        const entryDate = new Date(storedEntries[0].date);
-        if (isNaN(entryDate)) {
-          console.warn("❗ Invalid entry date:", storedEntries[0].date);
-          return;
-        }
+    const storedMonthRaw = localStorage.getItem("month");
+    const storedMonth = storedMonthRaw !== null ? parseInt(storedMonthRaw, 10) : NaN;
 
-        const archiveMonth = entryDate.getMonth();
-        const archiveYear = entryDate.getFullYear();
-
-        const summary = {
-          totalEntries: storedEntries.length,
-          totalMinutes: storedEntries.reduce((sum, e) => sum + e.minutes, 0),
-          totalPay: storedEntries
-            .reduce((sum, e) => sum + parseFloat(e.total), 0)
-            .toFixed(2),
-          byType: storedEntries.reduce((acc, e) => {
-            if (!acc[e.workType]) {
-              acc[e.workType] = { minutes: 0, total: 0 };
-            }
-            acc[e.workType].minutes += e.minutes;
-            acc[e.workType].total += parseFloat(e.total);
-            return acc;
-          }, {}),
-        };
-
-        const updatedArchive = [
-          ...storedArchive,
-          {
-            month: archiveMonth,
-            year: archiveYear,
-            summary,
-          },
-        ];
-
-        localStorage.setItem("archive", JSON.stringify(updatedArchive));
-        setArchive(updatedArchive);
-      } else {
-        setArchive(storedArchive);
+    // If there's a stored month and it's different, archive old entries
+    if (!isNaN(storedMonth) && storedMonth !== thisMonth && storedEntries.length > 0) {
+      // use storedMonth as the archived month; prefer the year from the first entry date if available
+      let archiveYear = now.getFullYear();
+      try {
+        const firstDate = new Date(storedEntries[0].date);
+        if (!isNaN(firstDate)) archiveYear = firstDate.getFullYear();
+      } catch (err) {
+        // fallback to current year
       }
 
-      // Start fresh for the new month
+      const summary = createSummaryFromEntries(storedEntries);
+
+      const updatedArchive = [
+        ...storedArchive,
+        { month: storedMonth, year: archiveYear, summary },
+      ];
+      localStorage.setItem("archive", JSON.stringify(updatedArchive));
+      setArchive(updatedArchive);
+
+      // clear entries for the new month
       localStorage.setItem("entries", JSON.stringify([]));
       localStorage.setItem("month", thisMonth.toString());
       setEntries([]);
     } else {
-      // Load stored entries for the current month
+      // Either the month matches, or no stored month — just load what's present
       setEntries(storedEntries);
       setArchive(storedArchive);
+
+      // If there was never a stored month, initialize it
+      if (isNaN(storedMonth)) {
+        localStorage.setItem("month", thisMonth.toString());
+      }
     }
-    setCurrentMonth(thisMonth);
   }, []);
 
+  // Save entries and currentMonth whenever they change
   useEffect(() => {
-    // This effect saves data whenever entries or currentMonth change
     localStorage.setItem("entries", JSON.stringify(entries));
     localStorage.setItem("month", currentMonth.toString());
   }, [entries, currentMonth]);
 
-  const [editingId, setEditingId] = useState(null);
+  // Save archive whenever it changes
+  useEffect(() => {
+    localStorage.setItem("archive", JSON.stringify(archive));
+  }, [archive]);
 
+  // --- Called before adding an entry to ensure a month rollover is applied if needed
+  const checkMonthChange = () => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    if (thisMonth !== currentMonth) {
+      // Archive current `entries` (the ones that belong to the old month)
+      if (entries.length > 0) {
+        const summary = createSummaryFromEntries(entries);
+        const updatedArchive = [
+          ...archive,
+          { month: currentMonth, year: now.getFullYear(), summary },
+        ];
+        setArchive(updatedArchive);
+        localStorage.setItem("archive", JSON.stringify(updatedArchive));
+      }
+
+      // Reset entries for the new month
+      setEntries([]);
+      localStorage.setItem("entries", JSON.stringify([]));
+      setCurrentMonth(thisMonth);
+      localStorage.setItem("month", thisMonth.toString());
+    }
+  };
+
+  // Add or update an entry
   const addEntry = () => {
+    checkMonthChange(); // <= important: archive first if month changed
+
     if (serviceName && flatRate) {
       const newEntry = {
         id: Date.now(),
         date: date || new Date().toISOString().split("T")[0],
-        workType: serviceName, // Use serviceName as the workType
+        workType: serviceName,
         isFlatRate: true,
-        // flatRate: parseFloat(flatRate),
+        flatRate: parseFloat(flatRate),
         total: parseFloat(flatRate).toFixed(2),
       };
-      setEntries([newEntry, ...entries]);
-      // Optionally, send this to your Google Sheet as well
-      // sendToGoogleSheet(newEntry);
+      setEntries((prev) => [newEntry, ...prev]);
+      // sendToGoogleSheet(newEntry); // optional
     } else if (workType && minutes) {
       const time = parseFloat(minutes);
       if (isNaN(time)) {
@@ -131,13 +172,11 @@ export default function Home() {
           minutes: time,
           payRate: fixedPayRate,
           total,
-          // totalEarnedSoFar: (getTotalPay() * 1 + parseFloat(total)).toFixed(2),
         };
-        setEntries([newEntry, ...entries]);
+        setEntries((prev) => [newEntry, ...prev]);
         // sendToGoogleSheet(newEntry);
       }
     } else {
-      // Display an error if no valid input is provided
       alert(
         "Please enter a Service Name and Flat Rate, OR select a Work Type and enter Minutes."
       );
@@ -152,28 +191,19 @@ export default function Home() {
     setDate("");
   };
 
-  const getTotalMinutes = () => {
-    return entries.reduce((sum, e) => {
-      // Check if `e.minutes` is a valid number before adding it to the sum
-      return sum + (typeof e.minutes === "number" ? e.minutes : 0);
-    }, 0);
-  };
+  const getTotalMinutes = () =>
+    entries.reduce((sum, e) => sum + (typeof e.minutes === "number" ? e.minutes : 0), 0);
 
-  const getTotalPay = () => {
-    return entries.reduce((sum, e) => sum + parseFloat(e.total), 0).toFixed(2);
-  };
+  const getTotalPay = () =>
+    entries.reduce((sum, e) => sum + (parseFloat(e.total) || 0), 0).toFixed(2);
 
   const getTotalsByType = () => {
     const grouped = {};
     entries.forEach((e) => {
-      if (!grouped[e.workType]) {
-        grouped[e.workType] = { minutes: 0, total: 0 };
-      }
-      // Conditionally add minutes if the property exists
-      if (e.minutes !== undefined) {
-        grouped[e.workType].minutes += e.minutes;
-      }
-      grouped[e.workType].total += parseFloat(e.total);
+      const type = e.workType || "Other";
+      if (!grouped[type]) grouped[type] = { minutes: 0, total: 0 };
+      if (typeof e.minutes === "number") grouped[type].minutes += e.minutes;
+      grouped[type].total += parseFloat(e.total) || 0;
     });
     return grouped;
   };
@@ -201,6 +231,7 @@ export default function Home() {
   return (
     <main className="max-w-2xl mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Forms</h1>
+      {/* ... your links/buttons unchanged ... */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <a
           href={process.env.NEXT_PUBLIC_GOOGLE_FORM_CLASS}
@@ -230,6 +261,7 @@ export default function Home() {
           Grading Time
         </a>
       </div>
+
       <h1 className="text-3xl font-bold mb-4">Time Tracker</h1>
       <input
         type="date"
@@ -284,6 +316,7 @@ export default function Home() {
           {editingId !== null ? "Update Entry" : "Add Entry"}
         </button>
       </div>
+
       {/* Summary */}
       <div className="bg-base-200 p-4 rounded-lg shadow mb-6">
         <h2 className="text-xl font-bold mb-2">Summary</h2>
@@ -306,9 +339,11 @@ export default function Home() {
             ))}
           </ul>
         </div>
+
         {/* Archive Summary */}
         <div className="bg-base-200 p-4 rounded-lg shadow mb-6">
           <h2 className="text-xl font-bold mb-2">Archived Summaries</h2>
+          {archive.length === 0 && <p>No archived months yet.</p>}
           {archive.map((monthData, index) => {
             const summary = monthData.summary;
             return (
@@ -336,6 +371,7 @@ export default function Home() {
           })}
         </div>
       </div>
+
       {/* Time Cards */}
       <div className="bg-base-200 p-4 rounded-lg shadow mb-6">
         <ul className="space-y-4">
@@ -346,7 +382,9 @@ export default function Home() {
               <p>Work: {entry.workType}</p>
               {entry.isFlatRate ? (
                 <p className="text-lg font-semibold">
-                  Flat Rate: ${entry.flatRate}
+                  Flat Rate: ${entry.flatRate?.toFixed
+                    ? entry.flatRate.toFixed(2)
+                    : entry.flatRate}
                 </p>
               ) : (
                 <>
@@ -357,14 +395,12 @@ export default function Home() {
                 </>
               )}
 
-              <p className="text-green-600 font-semibold">
-                Pay: ${entry.total}
-              </p>
+              <p className="text-green-600 font-semibold">Pay: ${entry.total}</p>
               <div className="mt-2">
                 <button
                   onClick={() => {
                     setWorkType(entry.workType);
-                    setMinutes(entry.minutes.toString());
+                    setMinutes(entry.minutes !== undefined ? entry.minutes.toString() : "");
                     setDate(entry.date);
                     setEditingId(entry.id);
                   }}
